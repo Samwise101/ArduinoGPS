@@ -2,7 +2,6 @@
 #include <SoftwareSerial.h>
 #include <math.h>
 
-void displayInfo();
 void getGPSPoint();
 void calculateGPSDistance();
 double haversine(double lat1, double lon1, double lat2, double lon2);
@@ -44,6 +43,7 @@ void loop() {
           if(gps_point_counter < 4){
             getGPSPoint();
             calculateGPSDistance();
+            Serial.println();
           }
         }
         
@@ -54,14 +54,11 @@ void loop() {
             gps_point_lat_lon_array[i][1] = gps_point_lat_lon_array[i+1][1];
           }
         }
-
-        delay(1000);
-
       }
     }
 
     if(millis() > 5000 && gps.charsProcessed() < 10){
-      Serial.println("No GPS detected!");
+      Serial.println("-1");
     }
   }
 }
@@ -88,78 +85,45 @@ void calculateGPSDistance(){
   double distance2 = gps.distanceBetween(gps_point_lat_lon_array[gps_point_counter-2][0] , gps_point_lat_lon_array[gps_point_counter-2][1], 
                              gps_point_lat_lon_array[gps_point_counter-1][0], gps_point_lat_lon_array[gps_point_counter-1][1]);
 
-  fullDistanceTraveled += distance2;
+  if(distance2 > 2.0 || distance > 2.0){
+    distance = 0.0;
+    distance2 = 0.0;
+  }
 
-  // len vypisy kvoli testovaniu
-  Serial.println("GPS points: ");
-  Serial.print("Lat: ");
-  Serial.print(gps_point_lat_lon_array[gps_point_counter-2][0],10);
-  Serial.print(", lon: ");
-  Serial.println(gps_point_lat_lon_array[gps_point_counter-2][1],10);
-  Serial.print("Lat: ");
-  Serial.print(gps_point_lat_lon_array[gps_point_counter-1][0],10);
-  Serial.print(", lon: ");
-  Serial.println(gps_point_lat_lon_array[gps_point_counter-1][1],10);
-  Serial.print("Distance between points: ");
-  Serial.println(distance2,10);
-  Serial.print("Complete distance traveled: ");
-  Serial.println(fullDistanceTraveled,10);
-  Serial.println("---------------------------");
-  Serial.println();
+  distance = (distance + distance2)/2.0;
+
+  fullDistanceTraveled += distance;
+
+  Serial.print(distance,10);
+  Serial.print(",");
+  Serial.print(fullDistanceTraveled,10);
 }
 
 void getGPSPoint(){
   if(gps_point_counter < 4){
     if (gps.location.isValid()) {
     //  displayInfo();
-      Serial.println("GPS location is valid!");
+      Serial.print("1");
+      Serial.print(",");
       
       gps_satelite_number = gps.satellites.value();
-      Serial.print("Number of satelites: ");
-      Serial.println(gps_satelite_number);
+      Serial.print(gps_satelite_number);
+      Serial.print(",");
 
       gps_point_lat_lon_array[gps_point_counter][0] = gps.location.lat();
       gps_point_lat_lon_array[gps_point_counter][1] = gps.location.lng();
-      gps_point_counter++;
 
-      Serial.print("GPS points count = ");
-      Serial.println(gps_point_counter);
+      Serial.print(gps_point_lat_lon_array[gps_point_counter][0],10);
+      Serial.print(",");
+
+      Serial.print(gps_point_lat_lon_array[gps_point_counter][1],10);
+      Serial.print(",");
+
+      gps_point_counter++;
     }
     else{
-      Serial.println("GPS location is INvalid!");
+      Serial.print("0");
+      Serial.print(",");
     }
   }
-}
-
-void displayInfo() {
-  if (gps.location.isValid()) {
-    Serial.print("VALID LOCATION: ");
-    Serial.print(gps.location.lat(), 10);
-    Serial.print(", ");
-    Serial.println(gps.location.lng(), 10);
-  } else {
-    Serial.print("INVALID LOCATION: ");
-    Serial.print(gps.location.lat(), 10);
-    Serial.print(", ");
-    Serial.println(gps.location.lng(), 10);
-  }
-  Serial.print("Number of satelites: ");
-  Serial.println(gps.satellites.value(), 10);
-
-  Serial.print("Date: ");
-  Serial.print(gps.date.day(), 10);
-  Serial.print(".");
-  Serial.print(gps.date.month(), 10);
-  Serial.print(".");
-  Serial.println(gps.date.year(), 10);
-
-  Serial.print("Time: ");
-  Serial.print(gps.time.hour(), 10);
-  Serial.print(":");
-  Serial.print(gps.time.minute(), 10);
-  Serial.print(":");
-  Serial.print(gps.time.second(), 10);
-  Serial.println();
-  Serial.println();
-  Serial.println("-------------------------------");
 }
