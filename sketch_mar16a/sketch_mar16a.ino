@@ -12,13 +12,12 @@ static const long GPSbaud = 9600;
 
 double gps_point_lat_lon_array[4][2];
 uint32_t gps_satelite_number = 0;
-
 uint8_t gps_point_counter = 0;
-
+double gps_lat_lon_treshold = 0.000018; 
+double gps_heading_degrees = 0.0;
 double fullDistanceTraveled = 0;
 
 TinyGPSPlus gps;
-
 SoftwareSerial ss(RXPin, TXpin);
 
 unsigned long previousMillis = 0UL;
@@ -42,7 +41,7 @@ void loop() {
         if(currentMillis - previousMillis > interval){
           if(gps_point_counter < 4){
             getGPSPoint();
-            calculateGPSDistance();
+            calculateGPSDistanceAndHeading();
             Serial.println();
           }
         }
@@ -75,7 +74,7 @@ double haversine(double lat1, double lon1, double lat2, double lon2) {
     return d; // in meters
 }
 
-void calculateGPSDistance(){
+void calculateGPSDistanceAndHeading(){
   if(gps_point_counter <= 1){
     return;
   }
@@ -94,6 +93,9 @@ void calculateGPSDistance(){
 
   fullDistanceTraveled += distance;
 
+  gps_heading_degrees = gps.courseTo(gps_point_lat_lon_array[gps_point_counter-2][0] , gps_point_lat_lon_array[gps_point_counter-2][1], 
+                             gps_point_lat_lon_array[gps_point_counter-1][0], gps_point_lat_lon_array[gps_point_counter-1][1]);
+
   Serial.print(distance,10);
   Serial.print(",");
   Serial.print(fullDistanceTraveled,10);
@@ -101,7 +103,7 @@ void calculateGPSDistance(){
 
 void getGPSPoint(){
   if(gps_point_counter < 4){
-    if (gps.location.isValid()) {
+    if (gps.location.isValid() && gps.location.isUpdated()) {
     //  displayInfo();
       Serial.print("1");
       Serial.print(",");
@@ -110,16 +112,16 @@ void getGPSPoint(){
       Serial.print(gps_satelite_number);
       Serial.print(",");
 
-      gps_point_lat_lon_array[gps_point_counter][0] = gps.location.lat();
-      gps_point_lat_lon_array[gps_point_counter][1] = gps.location.lng();
+        gps_point_lat_lon_array[gps_point_counter][0] = gps.location.lat();
+        gps_point_lat_lon_array[gps_point_counter][1] = gps.location.lng();
 
-      Serial.print(gps_point_lat_lon_array[gps_point_counter][0],10);
-      Serial.print(",");
+        Serial.print(gps_point_lat_lon_array[gps_point_counter][0],10);
+        Serial.print(",");
 
-      Serial.print(gps_point_lat_lon_array[gps_point_counter][1],10);
-      Serial.print(",");
+        Serial.print(gps_point_lat_lon_array[gps_point_counter][1],10);
+        Serial.print(",");
 
-      gps_point_counter++;
+        gps_point_counter++;
     }
     else{
       Serial.print("0");
