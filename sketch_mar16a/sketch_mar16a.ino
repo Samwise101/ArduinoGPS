@@ -3,17 +3,21 @@
 #include <math.h>
 
 void getGPSPoint();
+void gpsLoop();
+double getNewestLat();
+double getNewestLng();
 void calculateGPSDistance();
 double haversine(double lat1, double lon1, double lat2, double lon2);
 
-static const uint8_t RXPin = A0;
-static const uint8_t TXpin = A1;
+static const uint8_t RXPin = 4;
+static const uint8_t TXpin = 3;
 static const long GPSbaud = 9600;
+
+uint8_t dataAvailable = 0;
 
 double gps_point_lat_lon_array[4][2];
 uint32_t gps_satelite_number = 0;
-uint8_t gps_point_counter = 0;
-double gps_lat_lon_treshold = 0.000018; 
+uint8_t gps_point_counter = 0; 
 double gps_heading_degrees = 0.0;
 double fullDistanceTraveled = 0;
 
@@ -24,7 +28,6 @@ unsigned long previousMillis = 0UL;
 unsigned long interval = 1000UL;
 
 void setup() {
-
   // put your setup code here, to run once:
   Serial.begin(GPSbaud);
   ss.begin(GPSbaud);
@@ -32,8 +35,12 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if (ss.available() > 0) {
+  gpsLoop();
+  }
 
+void gpsLoop(){
+
+  if (ss.available() > 0) {
     if(gps.encode(ss.read())){
       if(gps.location.isValid()){
         unsigned long currentMillis = millis();
@@ -41,8 +48,9 @@ void loop() {
         if(currentMillis - previousMillis > interval){
           if(gps_point_counter < 4){
             getGPSPoint();
-            calculateGPSDistanceAndHeading();
-            Serial.println();
+            if(dataAvailable == 1){
+              calculateGPSDistanceAndHeading();
+            }
           }
         }
         
@@ -54,12 +62,38 @@ void loop() {
           }
         }
       }
-    }
+      if(dataAvailable == 1){
+        double temp = -1;
+        temp = getNewestLat();
+        Serial.println();
+        Serial.print("Newest lat = ");
+        Serial.println(temp,10);
 
-    if(millis() > 5000 && gps.charsProcessed() < 10){
-      Serial.println("-1");
+        temp = getNewestLng();
+
+        Serial.print("Newest lng = ");
+        Serial.println(temp,10);
+
+        Serial.print("Number of satelites = ");
+        Serial.println(gps_satelite_number);
+      }
     }
   }
+}
+
+double getNewestLat(){
+  if(gps_point_counter < 1 || gps_point_counter > 4){
+    return -1;
+  }
+  return gps_point_lat_lon_array[gps_point_counter][0];
+}
+
+double getNewestLng(){
+  if(gps_point_counter < 1 || gps_point_counter > 4){
+    return -1;
+  }
+
+  return gps_point_lat_lon_array[gps_point_counter][1];
 }
 
 double haversine(double lat1, double lon1, double lat2, double lon2) {
@@ -75,9 +109,6 @@ double haversine(double lat1, double lon1, double lat2, double lon2) {
 }
 
 void calculateGPSDistanceAndHeading(){
-  if(gps_point_counter <= 1){
-    return;
-  }
   double distance = haversine(gps_point_lat_lon_array[gps_point_counter-2][0] , gps_point_lat_lon_array[gps_point_counter-2][1], 
                              gps_point_lat_lon_array[gps_point_counter-1][0], gps_point_lat_lon_array[gps_point_counter-1][1]);
 
@@ -91,19 +122,28 @@ void calculateGPSDistanceAndHeading(){
 
   distance = (distance + distance2)/2.0;
 
-  fullDistanceTraveled += distance;
+  if(distance != 0.0){
+    fullDistanceTraveled += distance;
+  }
 
   gps_heading_degrees = gps.courseTo(gps_point_lat_lon_array[gps_point_counter-2][0] , gps_point_lat_lon_array[gps_point_counter-2][1], 
-                             gps_point_lat_lon_array[gps_point_counter-1][0], gps_point_lat_lon_array[gps_point_counter-1][1]);
+                              gps_point_lat_lon_array[gps_point_counter-1][0], gps_point_lat_lon_array[gps_point_counter-1][1]);
 
   Serial.print(distance,10);
   Serial.print(",");
   Serial.print(fullDistanceTraveled,10);
+  Serial.print(",");
+  Serial.print(gps_heading_degrees,10);
 }
 
 void getGPSPoint(){
   if(gps_point_counter < 4){
     if (gps.location.isValid() && gps.location.isUpdated()) {
+
+      if(gps_point_counter > 1)
+        dataAvailable = 1;
+      else
+        dataAvailable = 0;
     //  displayInfo();
       Serial.print("1");
       Serial.print(",");
@@ -112,20 +152,18 @@ void getGPSPoint(){
       Serial.print(gps_satelite_number);
       Serial.print(",");
 
-        gps_point_lat_lon_array[gps_point_counter][0] = gps.location.lat();
-        gps_point_lat_lon_array[gps_point_counter][1] = gps.location.lng();
+      gps_point_lat_lon_array[gps_point_counter][0] = gps.location.lat();
+      gps_point_lat_lon_array[gps_point_counter][1] = gps.location.lng();
 
-        Serial.print(gps_point_lat_lon_array[gps_point_counter][0],10);
-        Serial.print(",");
+      Serial.print(gps_point_lat_lon_array[gps_point_counter][0],10);
+      Serial.print(",");
 
-        Serial.print(gps_point_lat_lon_array[gps_point_counter][1],10);
-        Serial.print(",");
-
-        gps_point_counter++;
+      Serial.print(gps_point_lat_lon_array[gps_point_counter][1],10);
+      Serial.print(",");
+      gps_point_counter++;
     }
     else{
-      Serial.print("0");
-      Serial.print(",");
+      dataAvailable = 0;
     }
   }
 }
