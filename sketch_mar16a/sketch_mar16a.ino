@@ -22,23 +22,28 @@ double gps_heading_degrees = 0.0;
 double fullDistanceTraveled = 0;
 
 TinyGPSPlus gps;
-SoftwareSerial ss(GPS_RXpin, GPS_TXpin);
+//SoftwareSerial Serial7(GPS_RXpin, GPS_TXpin);
 
 unsigned long gps_previousMillis = 0UL;
 unsigned long gps_interval = 1000UL;
 
 void setup() {
-  Serial.begin(GPSbaud);
-  ss.begin(GPSbaud);
+  Serial.begin(9600);
+  Serial7.begin(9600);
 }
 
 void loop() {
+  //Serial.println("HELLO");
   gpsLoop();
 }
 
 void gpsLoop(){
-  if (ss.available() > 0) {
-    if(gps.encode(ss.read())){
+  //Serial.println("HELLO");
+  while (Serial7.available() > 0) {
+   // Serial.println("GPS AVAILABLE");
+    char c = Serial7.read();
+    //Serial.print(c);
+    if(gps.encode(c)){
       if(gps.location.isValid()){
         unsigned long currentMillis = millis();
 
@@ -60,8 +65,12 @@ void gpsLoop(){
         }
       }
     }
+    else{
+      //Serial.println("GPS LOCATION IS INVALID");
+    }
   }
-  else{
+  if(!Serial7.available()){
+    //Serial.println("GPS UNAVAILABLE");
     gps_dataAvailable = 0;
   }
 
